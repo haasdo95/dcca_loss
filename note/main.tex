@@ -1,0 +1,110 @@
+\documentclass[12pt]{article}
+
+\usepackage{answers}
+\usepackage{setspace}
+\usepackage{graphicx}
+\usepackage{enumitem}
+\usepackage{multicol}
+\usepackage{mathrsfs}
+\usepackage[margin=1in]{geometry} 
+\usepackage{amsmath,amsthm,amssymb}
+ 
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\R}{\mathbb{R}}
+
+\DeclareMathOperator{\sech}{sech}
+\DeclareMathOperator{\csch}{csch}
+ 
+\begin{document}
+ 
+% --------------------------------------------------------------
+%                         Start here
+% --------------------------------------------------------------
+ 
+\title{CCA: all the math here}%replace with the appropriate homework number
+\author{Guohao Dou} %if necessary, replace with your course title
+ 
+\maketitle
+
+\section{Formulation}
+
+CCA (Canonical Correlation Analysis) has the following training objective:
+
+\[(w_1^*, w_2^*) = \text{argmax}_{w_1, w_2}
+    \frac{w_1'\Sigma_{12}w_2}
+    {\sqrt{w_1'\Sigma_{11}w_1\cdot w_2'\Sigma_{22}w_2}}\]
+
+Which could be easily turned into the following since we could scale $w_1, w_2$ however we want.
+\[(w_1^*, w_2^*) = \text{argmax}_{w_1, w_2}w_1'\Sigma_{12}w_2\]
+\[s.t.\;\; w_1'\Sigma_{11}w_1 = 1;\;\; w_2'\Sigma_{22}w_2 = 1\]
+
+Also, we need some sort of orthogonality
+\[w_1^{i'} \Sigma_{11} w_1^j = 0\;\;\; \forall i\neq j\]
+\[w_2^{i'} \Sigma_{22} w_2^j = 0\;\;\; \forall i\neq j\]
+
+where $w_1^i$ is the $i^{th}$ vector retrieved.\\
+
+The orthogonality constraints are annoying, but luckily we can find all $w_1, w_2$ we care to find in one go with the orthogonality constraints preserved. 
+
+Say we want $k$ pairs of $w_1, w_2$.
+
+Let's bundle the $k$ vectors of $w_1$ into columns of $A_1 = [w_1^{(1)}, w_1^{(2)}, ...w_1^{(k)}]$ and do the same for $A_2$. 
+
+The training objective could then be formulated as:
+\begin{align*}
+    A_1^*, A_2^* &= \text{argmax tr}(A_1'\Sigma_{12}A_2)\\
+                 &= \text{argmax} \sum_{i=1}^{k} w_1^{i'} \Sigma_{12} w_2^{i}\\
+    s.t.\;\; &A_1'\Sigma_{11}A_1 = I\\
+        &A_2'\Sigma_{22}A_2 = I
+\end{align*}
+\newpage
+
+And some really smart people showed that:
+\begin{align*}
+    T &\triangleq \Sigma_{11}^{-1/2}\Sigma_{12}\Sigma_{22}^{-1/2}\\
+    T &= U D V^T\\
+    A_1^* &= \Sigma_{11}^{-1/2}U_k\\
+    A_2^* &= \Sigma_{22}^{-1/2}V_k
+\end{align*}
+
+where $U_k, V_k$ are top $k$ left and right singular vectors of $T$. 
+
+And to train a neural network, we could simply maximize the empirical correlation:
+\[\max \bar{corr}(H_1, H_2) = \text{tr}(\sqrt{T'T})\]
+
+which is basically the trace norm of $T$. \\
+
+Well, we are technically done. But importantly, we need to show \emph{why} $\text{tr}(\sqrt{T'T})$ is the empirical correlation at all: it doesn't look like one, does it?\\
+
+To establish connection between the two, we just need to show that:
+\begin{itemize}
+    \item $(A_1^* = \Sigma_{11}^{-1/2}U_k; A_2^* = \Sigma_{22}^{-1/2}V_k)\to \text{maximized} (\text{tr}(\sqrt{T'T}))$
+\end{itemize}
+
+Let's just set $k = o$, for cleaner math. Also, remember $T \stackrel{svd}{=} UDV^T$.
+\begin{align*}
+    \text{tr}(A_1'\Sigma_{12}A_2) 
+        &= \text{tr}(U^T\Sigma_{11}^{-1/2}\Sigma_{12}\Sigma_{22}^{-1/2}V)\\
+        &= \text{tr}(U^T T V)\\
+        &= \text{tr}(D)\\
+        &= \text{tr}(\sqrt{T'T})
+\end{align*}
+
+% Let's do SVD on $H_1$ and $H_2$, which is a really safe bet on almost all matrix-related problems:
+% \begin{align*}
+%     H_1 &= U \Lambda_{1} W^T\\
+%     H_2 &= V \Lambda_{2} Y^T\\
+% \end{align*}
+% (The use of $W, Y$ is uncommon in SVD, but they'll be gone shortly:b)\\
+
+% Then we can form empirical variance \& covariance matrices:
+% \begin{align*}
+%     \Sigma_{11} &= H_1 H_1^T = U\Lambda_{1}^2U^T\\
+%     \Sigma_{22} &= H_2 H_2^T = V\Lambda_{2}^2V^T\\
+%     \Sigma_{12} &= H_1 H_2^T = U \Lambda_{1} W^T Y\Lambda_{2} V^T
+% \end{align*}
+
+
+\end{document}
