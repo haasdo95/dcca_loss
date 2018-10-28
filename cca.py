@@ -1,5 +1,6 @@
 from torch.autograd import Function, gradcheck
 from utils import *
+import torch
 
 
 class CorrelationLoss(Function):
@@ -28,12 +29,16 @@ class CorrelationLoss(Function):
 
         # compute variance / covariance matrices
         if ledoit:
-            var11, var11_inv, shrinkage_11 = covariance_matrix(H1, None)
-            var22, var22_inv, shrinkage_22 = covariance_matrix(H2, None)
+            var11, shrinkage_11 = covariance_matrix(H1, None)
+            var22, shrinkage_22 = covariance_matrix(H2, None)
+            if ctx is not None:
+                ctx.ledoit = ledoit
+                ctx.shrinkage_11 = shrinkage_11
+                ctx.shrinkage_22 = shrinkage_22
         else:
             var11 = covariance_matrix(H1_bar, sigma_reg)
             var22 = covariance_matrix(H2_bar, sigma_reg)
-        covar12 = H1_bar.mm(H2_bar.t()) / (sample_size - 1)
+        covar12 = H1_bar.mm(H2_bar.t()) / sample_size
 
         # form matrix T
         var11_rootinv = inverse_sqrt(var11)
@@ -46,7 +51,7 @@ class CorrelationLoss(Function):
             ctx.sample_size = sample_size
             ctx.save_for_backward(H1_bar, H2_bar, var11_rootinv, var22_rootinv, U, D.diag(), V)
 
-        corr = eigen_sqrt(T.t().mm(T)).trace()  # ???
+        corr = torch.sum(D)  # trace norm == sum of singular values
         return -corr  # minus sign here cuz you need to maximize corr
 
     @staticmethod
@@ -62,8 +67,8 @@ class CorrelationLoss(Function):
         delta11 = - var11_rootinv.mm(U).mm(D).mm(U.t()).mm(var11_rootinv) / 2
         delta22 = - var22_rootinv.mm(V).mm(D).mm(V.t()).mm(var22_rootinv) / 2
 
-        dfdH1 = (2 * delta11.mm(H1_bar) + delta12.mm(H2_bar)) / (ctx.sample_size - 1)
-        dfdH2 = (2 * delta22.mm(H2_bar) + delta12.t().mm(H1_bar)) / (ctx.sample_size - 1)
+        dfdH1 = (2 * delta11.mm(H1_bar) + delta12.mm(H2_bar)) / (ctx.sample_size)
+        dfdH2 = (2 * delta22.mm(H2_bar) + delta12.t().mm(H1_bar)) / (ctx.sample_size)
 
         return -dfdH1.t(), -dfdH2.t(), None, None
 
