@@ -20,6 +20,7 @@ class CorrelationLoss(Function):
         """
         # ledoit will give you the (pseudo)inverse directly: thus no need to combine inverse and sqrt
         sample_size = H1.shape[0]  # basically the batch size
+        output_dim = H1.shape[1]
 
         # turn H into o * m
         H1 = torch.t(H1)
@@ -28,11 +29,13 @@ class CorrelationLoss(Function):
         H2_bar = center(H2)
 
         # compute variance / covariance matrices
+        if ctx is not None:
+            ctx.ledoit = ledoit
         if ledoit:
+            print("USING LEDOIT")
             var11, shrinkage_11 = covariance_matrix(H1, None)
             var22, shrinkage_22 = covariance_matrix(H2, None)
             if ctx is not None:
-                ctx.ledoit = ledoit
                 ctx.shrinkage_11 = shrinkage_11
                 ctx.shrinkage_22 = shrinkage_22
         else:
@@ -49,6 +52,7 @@ class CorrelationLoss(Function):
 
         if ctx is not None:
             ctx.sample_size = sample_size
+            ctx.output_dim = output_dim
             ctx.save_for_backward(H1_bar, H2_bar, var11_rootinv, var22_rootinv, U, D.diag(), V)
 
         corr = torch.sum(D)  # trace norm == sum of singular values
@@ -63,12 +67,29 @@ class CorrelationLoss(Function):
         # print("backproping!")
         H1_bar, H2_bar, var11_rootinv, var22_rootinv, U, D, V = ctx.saved_tensors
 
+        # TODO: DO THE MATH and figure out how to backprop with Ledoit
+
         delta12 = var11_rootinv.mm(U).mm(V.t()).mm(var22_rootinv)
         delta11 = - var11_rootinv.mm(U).mm(D).mm(U.t()).mm(var11_rootinv) / 2
         delta22 = - var22_rootinv.mm(V).mm(D).mm(V.t()).mm(var22_rootinv) / 2
 
-        dfdH1 = (2 * delta11.mm(H1_bar) + delta12.mm(H2_bar)) / (ctx.sample_size)
-        dfdH2 = (2 * delta22.mm(H2_bar) + delta12.t().mm(H1_bar)) / (ctx.sample_size)
+        if ctx.ledoit:
+            shrinkage_11 = ctx.shrinkage_11
+            shrinkage_22 = ctx.shrinkage_22
+            dfdH1 = (
+                2 * (1 - shrinkage_11) * delta11.mm(H1_bar)
+                + 2 * shrinkage_11 * torch.trace(delta11) * H1_bar / ctx.output_dim
+                + delta12.mm(H2_bar)
+            ) / ctx.sample_size
+
+            dfdH2 = (
+                2 * (1 - shrinkage_22) * delta22.mm(H2_bar)
+                + 2 * shrinkage_22 * torch.trace(delta22) * H2_bar / ctx.output_dim
+                + delta12.t().mm(H1_bar)
+            ) / ctx.sample_size
+        else:
+            dfdH1 = (2 * delta11.mm(H1_bar) + delta12.mm(H2_bar)) / ctx.sample_size
+            dfdH2 = (2 * delta22.mm(H2_bar) + delta12.t().mm(H1_bar)) / ctx.sample_size
 
         return -dfdH1.t(), -dfdH2.t(), None, None
 
