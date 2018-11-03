@@ -1,4 +1,4 @@
-from torch.autograd import Function, gradcheck
+from torch.autograd import Function
 from utils import *
 import torch
 
@@ -78,13 +78,11 @@ class CorrelationLoss(Function):
             shrinkage_22 = ctx.shrinkage_22
             dfdH1 = (
                 2 * (1 - shrinkage_11) * delta11.mm(H1_bar)
-                + 2 * shrinkage_11 * torch.trace(delta11) * H1_bar / ctx.output_dim
                 + delta12.mm(H2_bar)
             ) / ctx.sample_size
 
             dfdH2 = (
                 2 * (1 - shrinkage_22) * delta22.mm(H2_bar)
-                + 2 * shrinkage_22 * torch.trace(delta22) * H2_bar / ctx.output_dim
                 + delta12.t().mm(H1_bar)
             ) / ctx.sample_size
         else:
@@ -94,4 +92,4 @@ class CorrelationLoss(Function):
         return -dfdH1.t(), -dfdH2.t(), None, None
 
 
-corrloss = CorrelationLoss.apply
+CorrLoss = CorrelationLoss.apply

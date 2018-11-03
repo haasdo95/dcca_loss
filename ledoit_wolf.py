@@ -20,19 +20,20 @@ def ledoit_wolf_shrinkage(X_bar):
     :return: (shrinkage, mu)
     """
     n_features, n_samples = X_bar.shape
-    emp_cov = X_bar.mm(X_bar.t()) / X_bar.shape[1]
+    emp_cov = X_bar.mm(X_bar.t()) / n_samples
+    emp_cov = emp_cov.detach()
     mu = torch.trace(emp_cov) / n_features
-    with torch.no_grad():
-        # A simple implementation of the formulas from Ledoit & Wolf
-        X_bar = X_bar.t()  # batch major!
-        delta_ = emp_cov.clone()
-        delta_.view(-1)[::n_features + 1] -= mu
-        delta = (delta_ ** 2).sum() / n_features
-        X2 = X_bar ** 2
-        beta_ = 1. / (n_features * n_samples) * torch.sum(torch.mm(X2.t(), X2) / n_samples - emp_cov ** 2)
-        beta = min(beta_, delta)
-        shrinkage = beta / delta
-    return float(shrinkage), mu
+    # A simple implementation of the formulas from Ledoit & Wolf
+    X_bar = X_bar.t()  # batch major!
+    delta_ = emp_cov.clone()
+    delta_.view(-1)[::n_features + 1] -= mu
+    delta = (delta_ ** 2).sum() / n_features
+    X2 = X_bar ** 2
+    beta_ = 1. / (n_features * n_samples) * torch.sum(torch.mm(X2.t(), X2) / n_samples - emp_cov ** 2)
+    beta = min(beta_, delta)
+    shrinkage = beta / delta
+    shrinkage = shrinkage.detach()
+    return shrinkage, mu
 
 
 # DON'T use it: just a sanity-check
