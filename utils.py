@@ -42,6 +42,6 @@ def covariance_matrix(H_bar: Union[Variable, torch.Tensor], reg: float) -> Any:
     if reg is not None:
         sample_size = H_bar.shape[1]
         out_dim = H_bar.shape[0]
-        return H_bar.mm(H_bar.t()) / sample_size + reg * torch.eye(out_dim, dtype=H_bar.dtype)
+        return H_bar.mm(H_bar.t()) / float(sample_size) + reg * torch.eye(out_dim, dtype=H_bar.dtype)
     else:  # using Ledoit estimator
         return ledoit_wolf_cov(H_bar)

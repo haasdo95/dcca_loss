@@ -1,9 +1,10 @@
-from cca import CorrelationLoss, CorrLoss
+from cca import CorrelationLoss, CorrLoss, CorrLayer
 import torch
 from torch.autograd import Variable
 import numpy as np
 import unittest
 from time import time
+from tensorboardX import SummaryWriter
 
 
 class TestCCA(unittest.TestCase):
@@ -35,12 +36,26 @@ class TestCCA(unittest.TestCase):
         self.assertTrue(np.allclose(H1_grad_auto, H1_grad_my))
         self.assertTrue(np.allclose(H2_grad_auto, H2_grad_my))
 
+    def test_ledoit_graph(self):
+        """
+        NOTE: WON'T work since ONNX doesn't support tracing SVD yet
+        """
+        corr_layer = CorrLayer(0.1)
+        writer = SummaryWriter("graph")
+        torch.manual_seed(100)
+        shape = (8, 4)
+        H1 = torch.randn(shape[0], shape[1], dtype=torch.double, requires_grad=True)
+        H2 = torch.randn(shape[0], shape[1], dtype=torch.double, requires_grad=True)
+        writer.add_graph(corr_layer, torch.stack((H1, H2), dim=0))
+        writer.close()
+
     def test_cca_ledoit(self):
         """
         NOTE: won't pass before I figure out how to backprop with Ledoit
         NOTE: there still seems to be funky numerical issues
         """
-        shape = (4, 4)
+        torch.manual_seed(100)
+        shape = (8, 4)
         H1 = torch.randn(shape[0], shape[1], dtype=torch.double, requires_grad=True)
         H2 = torch.randn(shape[0], shape[1], dtype=torch.double, requires_grad=True)
 
@@ -64,7 +79,8 @@ class TestCCA(unittest.TestCase):
         print("auto: ", H1_grad_auto)
         print("my: ", H1_grad_my)
 
-        print("auto - my: ", H1_grad_auto - H1_grad_my)
+        print("auto - my: ", (H1_grad_auto - H1_grad_my))
+        print("auto - my(%): ", (H1_grad_auto - H1_grad_my) / H1_grad_my)
 
         self.assertTrue(np.allclose(H1_grad_auto, H1_grad_my, atol=10E-3))
         self.assertTrue(np.allclose(H2_grad_auto, H2_grad_my, atol=10E-3))
