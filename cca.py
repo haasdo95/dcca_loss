@@ -36,8 +36,8 @@ class CorrelationLoss(Function):
             ctx.ledoit = ledoit
         if ledoit:
             print("USING LEDOIT")
-            var11, shrinkage_11 = covariance_matrix(H1, None)
-            var22, shrinkage_22 = covariance_matrix(H2, None)
+            var11, shrinkage_11 = covariance_matrix(H1_bar, None)
+            var22, shrinkage_22 = covariance_matrix(H2_bar, None)
             assert not shrinkage_11.requires_grad
             assert not shrinkage_22.requires_grad
             if ctx is not None:
