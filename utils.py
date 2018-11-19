@@ -1,7 +1,7 @@
 import torch
 from torch.autograd import Variable
 from typing import *
-from ledoit_wolf import ledoit_wolf_cov
+from .ledoit_wolf import ledoit_wolf_cov
 
 
 def inverse_sqrt(A: Union[Variable, torch.Tensor]):

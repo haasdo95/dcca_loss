@@ -1,7 +1,5 @@
 import unittest
-import torch
-from torch.autograd import Variable
-from utils import *
+from .utils import *
 import numpy as np
 
 
@@ -58,9 +56,8 @@ class TestUtils(unittest.TestCase):
         truth_cov, H = self.multivariate_normal(shape[0], shape[1], reg=0)
         H = Variable(torch.from_numpy(H), requires_grad=False)
         H_bar = center(H)
-        ledoit_cov, precision, shrinkage = covariance_matrix(H_bar, reg=None)
+        ledoit_cov, shrinkage = covariance_matrix(H_bar, reg=None)
         self.assertTrue(ledoit_cov.shape[0] == shape[0])
-        self.assertTrue(np.allclose(torch.eye(shape[0]), ledoit_cov @ precision))
         print(shrinkage)
         print(truth_cov)
         truth_cov = truth_cov.numpy()

@@ -1,5 +1,5 @@
 from torch.autograd import Function
-from utils import *
+from .utils import *
 import torch
 from torch import nn
 

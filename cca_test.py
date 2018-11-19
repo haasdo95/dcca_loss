@@ -1,4 +1,4 @@
-from cca import CorrelationLoss, CorrLoss, CorrLayer
+from .cca import CorrelationLoss, CorrLoss, CorrLayer
 import torch
 from torch.autograd import Variable
 import numpy as np
