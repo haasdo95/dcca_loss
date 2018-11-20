@@ -1,4 +1,4 @@
-from .cca import CorrelationLoss, CorrLoss, CorrLayer
+from .cca import CorrelationLoss, CorrLoss
 import torch
 from torch.autograd import Variable
 import numpy as np
@@ -18,7 +18,7 @@ class TestCCA(unittest.TestCase):
 
         fwd_func = CorrelationLoss.forward
         start = time()
-        corr = fwd_func(None, H1, H2, reg, False)  # using autograd
+        corr = fwd_func(None, H1, H2, reg, False, None)  # using autograd
         corr.backward()
         print("autograd time taken", time() - start)
         H1_grad_auto = np.copy(H1.grad.data)
@@ -27,7 +27,7 @@ class TestCCA(unittest.TestCase):
         H2.grad.data.zero_()
 
         start = time()
-        corr = CorrLoss(H1, H2, reg, False)  # using my forward & backward
+        corr = CorrLoss(H1, H2, reg, False, None)  # using my forward & backward
         corr.backward()
         print("my grad time taken", time() - start)
         H1_grad_my = np.copy(H1.grad.data)
@@ -43,7 +43,7 @@ class TestCCA(unittest.TestCase):
 
         fwd_func = CorrelationLoss.forward
         start = time()
-        corr = fwd_func(None, H1, H2, None, True)  # using autograd
+        corr = fwd_func(None, H1, H2, None, True, True)  # using autograd
         corr.backward()
         print("autograd time taken", time() - start)
         H1_grad_auto = np.copy(H1.grad.data)
@@ -52,7 +52,39 @@ class TestCCA(unittest.TestCase):
         H2.grad.data.zero_()
 
         start = time()
-        corr = CorrLoss(H1, H2, None, True)  # using my forward & backward
+        corr = CorrLoss(H1, H2, None, True, True)  # using my forward & backward
+        corr.backward()
+        print("my grad time taken", time() - start)
+        H1_grad_my = np.copy(H1.grad.data)
+        H2_grad_my = np.copy(H2.grad.data)
+
+        print("auto: ", H1_grad_auto)
+        print("my: ", H1_grad_my)
+
+        print("auto - my: ", (H1_grad_auto - H1_grad_my))
+        print("auto - my(%): ", (H1_grad_auto - H1_grad_my) / H1_grad_my)
+
+        self.assertTrue(np.allclose(H1_grad_auto, H1_grad_my, atol=10E-3))
+        self.assertTrue(np.allclose(H2_grad_auto, H2_grad_my, atol=10E-3))
+
+    def test_cca_ledoit_no_mu_grad(self):
+        torch.manual_seed(100)
+        shape = (8, 4)
+        H1 = torch.randn(shape[0], shape[1], dtype=torch.double, requires_grad=True)
+        H2 = torch.randn(shape[0], shape[1], dtype=torch.double, requires_grad=True)
+
+        fwd_func = CorrelationLoss.forward
+        start = time()
+        corr = fwd_func(None, H1, H2, None, True, False)  # using autograd
+        corr.backward()
+        print("autograd time taken", time() - start)
+        H1_grad_auto = np.copy(H1.grad.data)
+        H2_grad_auto = np.copy(H2.grad.data)
+        H1.grad.data.zero_()
+        H2.grad.data.zero_()
+
+        start = time()
+        corr = CorrLoss(H1, H2, None, True, False)  # using my forward & backward
         corr.backward()
         print("my grad time taken", time() - start)
         H1_grad_my = np.copy(H1.grad.data)
@@ -81,12 +113,16 @@ class TestCCA(unittest.TestCase):
         fwd_func = CorrelationLoss.forward
         start = time()
         for _ in range(N):
-            corr = fwd_func(None, H1, H2, reg, False)  # using autograd
+            corr = fwd_func(None, H1, H2, reg, False, None)  # using autograd
             corr.backward()
         print("autograd time taken", time() - start)
 
         start = time()
         for _ in range(N):
-            corr = CorrLoss(H1, H2, reg, False)  # using my forward & backward
+            corr = CorrLoss(H1, H2, reg, False, None)  # using my forward & backward
             corr.backward()
         print("my grad time taken", time() - start)
+
+
+if __name__ == '__main__':
+    unittest.main()

@@ -3,21 +3,24 @@ import numpy as np
 import torch
 
 
-def ledoit_wolf_cov(X_bar):
+def ledoit_wolf_cov(X_bar, mu_gradient: bool):
     """
     :param X_bar: shape (o * m), not initially batch-major
     :return:
     """
     n_samples = X_bar.shape[1]
     n_features = X_bar.shape[0]
-    emp_cov = X_bar.mm(X_bar.t()) / float(n_samples)
+    emp_cov = X_bar.mm(X_bar.t()) / n_samples
     shrinkage, mu = ledoit_wolf_shrinkage(X_bar)
     assert not shrinkage.requires_grad
     assert not mu.requires_grad
-    print("shrinkage: ", shrinkage)
-    return (1 - shrinkage) * emp_cov + \
-           shrinkage * torch.trace(emp_cov) / float(n_features) * torch.eye(X_bar.shape[0], dtype=emp_cov.dtype), shrinkage
-    # shrinkage * mu * torch.eye(X_bar.shape[0], dtype=emp_cov.dtype), shrinkage
+    options = {"dtype": emp_cov.dtype, "device": emp_cov.device}
+    if not mu_gradient:  # gradient doesn't flow through mu
+        return (1 - shrinkage) * emp_cov + \
+           shrinkage * mu * torch.eye(X_bar.shape[0], **options), shrinkage
+    else:
+        return (1 - shrinkage) * emp_cov + \
+            shrinkage * (torch.trace(emp_cov) / n_features) * torch.eye(X_bar.shape[0], **options), shrinkage
 
 
 def ledoit_wolf_shrinkage(X_bar):
@@ -26,10 +29,8 @@ def ledoit_wolf_shrinkage(X_bar):
     :return: (shrinkage, mu)
     """
     n_features, n_samples = X_bar.shape
-    n_features, n_samples = float(n_features), float(n_samples)
     X_bar = X_bar.detach()  # prevent gradient
     emp_cov = X_bar.mm(X_bar.t()) / n_samples
-    emp_cov = emp_cov
     mu = torch.trace(emp_cov) / n_features
     # A simple implementation of the formulas from Ledoit & Wolf
     X_bar = X_bar.t()  # batch major!

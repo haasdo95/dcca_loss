@@ -33,15 +33,17 @@ def center(H: Union[Variable, torch.Tensor]) -> Union[Variable, torch.Tensor]:
     return H_bar
 
 
-def covariance_matrix(H_bar: Union[Variable, torch.Tensor], reg: float) -> Any:
+def covariance_matrix(H_bar: Union[Variable, torch.Tensor], reg: float, mu_gradient: bool) -> Any:
     """
     :param H_bar: dimension o * m, centered
     :param reg: tunable hyper-parameter to make covmat invertible. None if using Ledoit & Wolf
+    :param mu_gradient: True if you want gradient to flow through mu
     :return: cov mat of size o * o; or Tuple[covmat, shrinkage] if Ledoit
     """
     if reg is not None:
         sample_size = H_bar.shape[1]
         out_dim = H_bar.shape[0]
-        return H_bar.mm(H_bar.t()) / float(sample_size) + reg * torch.eye(out_dim, dtype=H_bar.dtype)
+        options = {"dtype": H_bar.dtype, "device": H_bar.device}
+        return H_bar.mm(H_bar.t()) / float(sample_size) + reg * torch.eye(out_dim, **options)
     else:  # using Ledoit estimator
-        return ledoit_wolf_cov(H_bar)
+        return ledoit_wolf_cov(H_bar, mu_gradient)

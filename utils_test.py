@@ -56,7 +56,7 @@ class TestUtils(unittest.TestCase):
         truth_cov, H = self.multivariate_normal(shape[0], shape[1], reg=0)
         H = Variable(torch.from_numpy(H), requires_grad=False)
         H_bar = center(H)
-        ledoit_cov, shrinkage = covariance_matrix(H_bar, reg=None)
+        ledoit_cov, shrinkage = covariance_matrix(H_bar, reg=None, mu_gradient=True)
         self.assertTrue(ledoit_cov.shape[0] == shape[0])
         print(shrinkage)
         print(truth_cov)
@@ -69,3 +69,7 @@ class TestUtils(unittest.TestCase):
         print("ledoit compared to truth", ledoit_err)
         print("SCM compared to truth", scm_err)
         self.assertTrue(ledoit_err < scm_err)
+
+
+if __name__ == '__main__':
+    unittest.main()
