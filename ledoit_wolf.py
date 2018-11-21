@@ -17,10 +17,10 @@ def ledoit_wolf_cov(X_bar, mu_gradient: bool):
     options = {"dtype": emp_cov.dtype, "device": emp_cov.device}
     if not mu_gradient:  # gradient doesn't flow through mu
         return (1 - shrinkage) * emp_cov + \
-           shrinkage * mu * torch.eye(X_bar.shape[0], **options), shrinkage
+           shrinkage * mu * torch.eye(X_bar.shape[0], **options), shrinkage, mu
     else:
         return (1 - shrinkage) * emp_cov + \
-            shrinkage * (torch.trace(emp_cov) / n_features) * torch.eye(X_bar.shape[0], **options), shrinkage
+            shrinkage * (torch.trace(emp_cov) / n_features) * torch.eye(X_bar.shape[0], **options), shrinkage, mu
 
 
 def ledoit_wolf_shrinkage(X_bar):

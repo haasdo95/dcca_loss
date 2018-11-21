@@ -43,7 +43,7 @@ class TestCCA(unittest.TestCase):
 
         fwd_func = CorrelationLoss.forward
         start = time()
-        corr = fwd_func(None, H1, H2, None, True, True)  # using autograd
+        corr, _, _, _, _ = fwd_func(None, H1, H2, None, True, True)  # using autograd
         corr.backward()
         print("autograd time taken", time() - start)
         H1_grad_auto = np.copy(H1.grad.data)
@@ -52,7 +52,7 @@ class TestCCA(unittest.TestCase):
         H2.grad.data.zero_()
 
         start = time()
-        corr = CorrLoss(H1, H2, None, True, True)  # using my forward & backward
+        corr, _, _, _, _ = CorrLoss(H1, H2, None, True, True)  # using my forward & backward
         corr.backward()
         print("my grad time taken", time() - start)
         H1_grad_my = np.copy(H1.grad.data)
@@ -75,7 +75,7 @@ class TestCCA(unittest.TestCase):
 
         fwd_func = CorrelationLoss.forward
         start = time()
-        corr = fwd_func(None, H1, H2, None, True, False)  # using autograd
+        corr, _, _, _, _ = fwd_func(None, H1, H2, None, True, False)  # using autograd
         corr.backward()
         print("autograd time taken", time() - start)
         H1_grad_auto = np.copy(H1.grad.data)
@@ -84,7 +84,7 @@ class TestCCA(unittest.TestCase):
         H2.grad.data.zero_()
 
         start = time()
-        corr = CorrLoss(H1, H2, None, True, False)  # using my forward & backward
+        corr, _, _, _, _ = CorrLoss(H1, H2, None, True, False)  # using my forward & backward
         corr.backward()
         print("my grad time taken", time() - start)
         H1_grad_my = np.copy(H1.grad.data)

@@ -21,7 +21,6 @@ class CorrelationLoss(Function):
         :param mu_gradient: True if want gradient flow through mu
         :return: corr coeff of H1 & H2
         """
-        # ledoit will give you the (pseudo)inverse directly: thus no need to combine inverse and sqrt
         sample_size = H1.shape[0]  # basically the batch size
         output_dim = H1.shape[1]
 
@@ -36,9 +35,8 @@ class CorrelationLoss(Function):
             ctx.ledoit = ledoit
             ctx.mu_gradient = mu_gradient
         if ledoit:
-            print("USING LEDOIT")
-            var11, shrinkage_11 = covariance_matrix(H1_bar, None, mu_gradient)
-            var22, shrinkage_22 = covariance_matrix(H2_bar, None, mu_gradient)
+            var11, shrinkage_11, mu_11 = covariance_matrix(H1_bar, None, mu_gradient)
+            var22, shrinkage_22, mu_22 = covariance_matrix(H2_bar, None, mu_gradient)
             assert not shrinkage_11.requires_grad
             assert not shrinkage_22.requires_grad
             if ctx is not None:
@@ -47,7 +45,7 @@ class CorrelationLoss(Function):
         else:
             var11 = covariance_matrix(H1_bar, sigma_reg, None)
             var22 = covariance_matrix(H2_bar, sigma_reg, None)
-        covar12 = H1_bar.mm(H2_bar.t()) / float(sample_size)
+        covar12 = H1_bar.mm(H2_bar.t()) / sample_size
 
         # form matrix T
         var11_rootinv = inverse_sqrt(var11)
@@ -62,12 +60,14 @@ class CorrelationLoss(Function):
             ctx.save_for_backward(H1_bar, H2_bar, var11_rootinv, var22_rootinv, U, D.diag(), V)
 
         corr = torch.sum(D)  # trace norm == sum of singular values
+        if ledoit:
+            return -corr, shrinkage_11, mu_11, shrinkage_22, mu_22  # return everything to be crystal clear
         return -corr  # minus sign here cuz you need to maximize corr
 
     @staticmethod
-    def backward(ctx, grad_output):
+    def backward(ctx, *grad_outputs):
         """
-        :param grad_output: has only one output
+        :param grad_outputs: never used since this is the loss function
         :return:
         """
         # print("backproping!")
