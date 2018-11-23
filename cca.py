@@ -12,13 +12,14 @@ class CorrelationLoss(Function):
         2. "trace norm" is the trace of sqrt(T'T), instead of sqrt((T'T).trace())
     """
     @staticmethod
-    def forward(ctx, H1, H2, sigma_reg, ledoit: bool, mu_gradient: bool):
+    def forward(ctx, H1, H2, sigma_reg, ledoit: bool, mu_gradient: bool, semiledoit=False):
         """
         :param ctx: context
         :param H1, H2: m * o tensors (m: batch size; o: output dimension)
         :param sigma_reg: regularizer on \Sigma_{11} and \Sigma{22}
         :param ledoit: True if using ledoit to estimate covariance
         :param mu_gradient: True if want gradient flow through mu
+        :param semiledoit: use ledoit for forward prop only
         :return: corr coeff of H1 & H2
         """
         sample_size = H1.shape[0]  # basically the batch size
@@ -60,9 +61,12 @@ class CorrelationLoss(Function):
             ctx.save_for_backward(H1_bar, H2_bar, var11_rootinv, var22_rootinv, U, D.diag(), V)
 
         corr = torch.sum(D)  # trace norm == sum of singular values
+        retval = -corr
         if ledoit:
-            return -corr, shrinkage_11, mu_11, shrinkage_22, mu_22  # return everything to be crystal clear
-        return -corr  # minus sign here cuz you need to maximize corr
+            if semiledoit:
+                ctx.ledoit = False  # avoid using ledoit in backprop
+            retval = -corr, shrinkage_11, mu_11, shrinkage_22, mu_22  # return everything to be crystal clear
+        return retval  # minus sign here cuz you need to maximize corr
 
     @staticmethod
     def backward(ctx, *grad_outputs):
